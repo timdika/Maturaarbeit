@@ -13,3 +13,7 @@ layer1_outputs = np.dot(inputs, np.array(gwicht).T) + biases
 layer2_outputs = np.dot(layer1_outputs, np.array(gwicht2).T) + biases2
 
 print(layer2_outputs)
+
+#Codebeschriibig: Mier hend e Batch vo 3 Inputs mit je 4 Zahle.
+#Mier hend 2 neurone (N1: gwicht und biases, N2: gwicht2 und biases2)
+#Inputs werdet aa N1 geh, desse Output als Input für N2 dient. Layer2_outputs isch denn s' Finale
