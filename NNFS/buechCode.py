@@ -1,19 +1,27 @@
-#Alles, was im Buech staat, wird da vo mier umgsetzt. Die Datei = NNFS Sandbox
+#Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
 import numpy as np
+import nnfs
+from nnfs.datasets import spiral_data
 
-inputs = [[1.0, 2.0, 3.0, 2.5], [5.0, 4.3, 2.3, 5.2], [-1.5, 3.2, 3.5, 9.0]]
-gwicht = [[0.2, 0.8, -0.5, 1.0], [0.5, -0.9, 0.3, -0.5], [0.26, 0.27, 0.28, 0.29]]
-biases = [2.0, 3.0, 0.5]
+nnfs.init()
 
-gwicht2 = [[0.1, 0.4, 0.3],[0.7, 0.2, 0.1],[0.8, 0.7, 0.6]]
-biases2 = [-1, 2, -0.5]
-
-layer1_outputs = np.dot(inputs, np.array(gwicht).T) + biases
-layer2_outputs = np.dot(layer1_outputs, np.array(gwicht2).T) + biases2
-
-print(layer2_outputs)
-
-#Codebeschriibig: Mier hend e Batch vo 3 Inputs mit je 4 Zahle.
-#Mier hend 2 neurone (N1: gwicht und biases, N2: gwicht2 und biases2)
-#Inputs werdet aa N1 geh, desse Output als Input für N2 dient. Layer2_outputs isch denn s' Finale
+#Dense Layer:
+class Layer_Dense:
+    #Initalisierung des Layers
+    def __init__(self, n_inputs, n_neuronen):
+        #Gwicht und Biases Initalisierung
+        self.gwicht = 0.01 * np.random.randn(n_inputs, n_neuronen)
+        self.biases = np.zeros((1, n_neuronen))
+    #Forward-Pass
+    def forward(self, inputs):
+        #Berechnung des Outputs
+        self.output = np.dot(inputs, self.gwicht) + self.biases
+#Erstellen eines Datensets
+X, y = spiral_data(samples=100, classes=3)
+#Kreation eines Layers mit 2 Inputs und 3 Outputss
+dense1 = Layer_Dense(2, 3)
+#Forward-Pass der Daten durch Layer
+dense1.forward(X)
+#Print des Ouputs
+print(dense1.output[:5])
