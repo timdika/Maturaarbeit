@@ -11,3 +11,8 @@ Mia maturlaboro traktas pri la kreinto de neuxrale reto por kazdistingeco de du 
 (RUSSISCHE UEBERSETZUNG)
 (INTERSLAWISCHE UEBERSETZUNG)
 My final project is about the creation of a neural network for distinguishing two cases
+
+----------------------------------------------------------------------------------------------------
+
+STATUS: Am Kapitel 4, ReLU-Aktivierungsfunktion; Theorie
+
