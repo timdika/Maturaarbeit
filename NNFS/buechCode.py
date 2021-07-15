@@ -1,8 +1,10 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
 import numpy as np
+import math
 import nnfs
 from nnfs.datasets import spiral_data
+from nnfs.datasets import vertical_data
 
 nnfs.init()
 
@@ -29,6 +31,28 @@ class Aktivierung_Softmax:
         exp_werte = np.exp(inputs - np.max(inputs, axis=1, keepdims=True))
         wahrscheinlichkeiten = exp_werte / np.sum(exp_werte, axis=1, keepdims=True)
         self.output = wahrscheinlichkeiten
+
+class Verlust:
+
+    def kalulieren(self, output, y):
+        sample_verluste = self.forward(output, y)
+        data_verlust = np.mean(sample_verluste)
+        return data_verlust
+
+class Verlust_CatCrossEnt(Verlust):
+
+    def forward(self, y_pred, y_true):
+        samples = len(y_pred)
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        if len(y_true.shape) == 1:
+            korrekte_sicherheiten = y_pred_clipped[range(samples), y_true]
+
+        elif len(y_true.shape) == 2:
+            korrekte_sicherheiten = np.sum(y_pred_clipped*y_true, axis=1)
+
+        neg_log_wahrscheinlichkeiten = -np.log(korrekte_sicherheiten)
+        return neg_log_wahrscheinlichkeiten
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
@@ -39,6 +63,9 @@ aktivierung1 = Aktivierung_ReLU()
 
 dense2 = Layer_Dense(3, 3)
 aktivierung2 = Aktivierung_Softmax()
+
+
+loss_function = Verlust_CatCrossEnt()
 #Forward-Pass der Daten durch Layer
 dense1.forward(X)
 
@@ -47,7 +74,11 @@ aktivierung1.forward(dense1.output)
 dense2.forward(aktivierung1.output)
 
 aktivierung2.forward(dense2.output)
+
 #Print des Ouputs
 #print(dense1.output[:5])
 #print(aktivierung1.output[:5])
 print(aktivierung2.output[:5])
+
+loss = loss_function.kalulieren(aktivierung2.output, y)
+print("loss: ", loss)

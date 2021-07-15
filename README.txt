@@ -14,5 +14,5 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Kap 4 fertig, Kap 5 aagfange
+STATUS: Kap 7 aagfange
 
