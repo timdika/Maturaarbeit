@@ -14,5 +14,6 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Bii Kap 9 aaglangt, Kap 9 und 10 sind nachher d Helfti vom Buech (öppe)
+STATUS: Bii Siite 215
 
+Problem: Verstah nöd ganz LOSS und Backpropagation

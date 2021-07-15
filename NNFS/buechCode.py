@@ -20,10 +20,24 @@ class Layer_Dense:
         #Berechnung des Outputs
         self.output = np.dot(inputs, self.gwicht) + self.biases
 
+        self.inputs = inputs
+    
+    def backward(self, dvalues): #Zruggpropagation (Kap 9 bis Siite 214)
+        self.dgwicht = np.dot(self.inputs.T, dvalues)
+        self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
+
+        self.dinputs = np.dot(dvalues, self.gwicht.T)
+
 class Aktivierung_ReLU:
 
     def forward(self, inputs):
+        self.inputs = inputs
         self.output = np.maximum(0, inputs)
+
+    def backward(self, dvalues): #Zruggpropagation
+        self.dinputs = dvalues.copy()
+
+        self.dinputs[self.inputs <= 0] = 0
 
 class Aktivierung_Softmax:
     
