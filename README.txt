@@ -14,5 +14,5 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Kap 7 aagfange
+STATUS: Bii Kap 9 aaglangt, Kap 9 und 10 sind nachher d Helfti vom Buech (öppe)
 
