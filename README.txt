@@ -14,5 +14,5 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Am Kapitel 4, ReLU-Aktivierungsfunktion; Theorie
+STATUS: Kap 4 fertig, Kap 5 aagfange
 
