@@ -17,11 +17,37 @@ class Layer_Dense:
     def forward(self, inputs):
         #Berechnung des Outputs
         self.output = np.dot(inputs, self.gwicht) + self.biases
+
+class Aktivierung_ReLU:
+
+    def forward(self, inputs):
+        self.output = np.maximum(0, inputs)
+
+class Aktivierung_Softmax:
+    
+    def forward(self, inputs):
+        exp_werte = np.exp(inputs - np.max(inputs, axis=1, keepdims=True))
+        wahrscheinlichkeiten = exp_werte / np.sum(exp_werte, axis=1, keepdims=True)
+        self.output = wahrscheinlichkeiten
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
 dense1 = Layer_Dense(2, 3)
+
+aktivierung1 = Aktivierung_ReLU()
+
+
+dense2 = Layer_Dense(3, 3)
+aktivierung2 = Aktivierung_Softmax()
 #Forward-Pass der Daten durch Layer
 dense1.forward(X)
+
+aktivierung1.forward(dense1.output)
+
+dense2.forward(aktivierung1.output)
+
+aktivierung2.forward(dense2.output)
 #Print des Ouputs
-print(dense1.output[:5])
+#print(dense1.output[:5])
+#print(aktivierung1.output[:5])
+print(aktivierung2.output[:5])
