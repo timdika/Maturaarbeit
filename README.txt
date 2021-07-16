@@ -14,10 +14,13 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Bii Siite 215
+STATUS: Churz vor Kap 10, Kap 9 fertig
 
 Problem: Verstah nöd ganz LOSS und Backpropagation
--> Genauer: 
+-> Genauer: Ich verstah einigi Sache wo ich im Code mache nöd. D Rolle vo "y" ii allne Funktione
+    gseh ich nöd. Uusserdem: y_true, y_pred sind für mich nöd ganz verständlich. Generell dä Code
+    vo dä letschte 2 Kapitel (öppe) gitt mer z'schaffe. ZMACHE: Namal Kapitel duuregah und genau luege
+    wo was passiert und WIESO. 
 
 ----------------------------------------------------------------------------------------------------
 

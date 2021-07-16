@@ -87,6 +87,27 @@ class Verlust_CatCrossEnt(Verlust):
         self.dinputs = -y_true / dvalues #Gradient ausrechenen
         self.dinputs = self.dinputs / samples #Gradient normalisieren
 
+#Softmax-Klassifizierer - kombiniert SoftmaxAktivierung und CrossEntLoss für schnelleres backward
+class Aktivierung_Softmax_Verlust_CatCrossEnt():
+
+    def __init__(self): #Kreierung von Aktivierung und Loss Funktionen Objekte
+        self.aktivierung = Aktivierung_Softmax()
+        self.verlust = Verlust_CatCrossEnt()
+
+    def forward(self, inputs, y_true):
+        self.aktivierung.forward(inputs) #Output Layer Aktivierungsfunktion
+        self.output = self.aktivierung.output #Set the ouput
+        return self.verlust.kalulieren(self.output, y_true) #Lossvalue berechnen und geben
+
+    def backward(self, dvalues, y_true):
+        samples = len(dvalues) #Anzahl samples
+
+        if len(y_true.shape) == 2: #"If labels are 1hot encoded, turn them into discrete values"
+            y_true = np.argmax(y_true, axis=1)
+        self.dinputs = dvalues.copy() #Kopieren für sichere Modifizierung
+        self.dinputs[range(samples), y_true] -= 1 #Gradient berechnen
+        self.dinputs = self.dinputs / samples #Gradienten normalisieren
+
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
@@ -96,10 +117,8 @@ aktivierung1 = Aktivierung_ReLU()
 
 
 dense2 = Layer_Dense(3, 3)
-aktivierung2 = Aktivierung_Softmax()
 
-
-loss_function = Verlust_CatCrossEnt()
+loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 #Forward-Pass der Daten durch Layer
 dense1.forward(X)
 
@@ -107,12 +126,29 @@ aktivierung1.forward(dense1.output)
 
 dense2.forward(aktivierung1.output)
 
-aktivierung2.forward(dense2.output)
 
-#Print des Ouputs
-#print(dense1.output[:5])
-#print(aktivierung1.output[:5])
-print(aktivierung2.output[:5])
+loss = loss_aktivierung.forward(dense2.output, y)
 
-loss = loss_function.kalulieren(aktivierung2.output, y)
+print(loss_aktivierung.output[:5])#Die erschte 5 Samples
+
 print("loss: ", loss)
+
+
+
+vorhersagen = np.argmax(loss_aktivierung.output, axis=1)
+if len(y.shape) == 2:
+    y = np.argmax(y, axis=1)
+genauigkeit = np.mean(vorhersagen==y)
+print("Genau: ", genauigkeit)
+
+#Zruggpass:
+loss_aktivierung.backward(loss_aktivierung.output, y)
+dense2.backward(loss_aktivierung.dinputs)
+aktivierung1.backward(dense2.dinputs)
+dense1.backward(aktivierung1.dinputs)
+
+#Gradienten:
+print(dense1.dgwicht)
+print(dense1.dbiases)
+print(dense2.dgwicht)
+print(dense2.dbiases)
