@@ -28,7 +28,7 @@ class Layer_Dense:
 
         self.dinputs = np.dot(dvalues, self.gwicht.T)
 
-class Aktivierung_ReLU:
+class Aktivierung_ReLU: #???
 
     def forward(self, inputs):
         self.inputs = inputs
@@ -41,7 +41,7 @@ class Aktivierung_ReLU:
 
 class Aktivierung_Softmax:
     
-    def forward(self, inputs):
+    def forward(self, inputs): #???
         exp_werte = np.exp(inputs - np.max(inputs, axis=1, keepdims=True))
         wahrscheinlichkeiten = exp_werte / np.sum(exp_werte, axis=1, keepdims=True)
         self.output = wahrscheinlichkeiten
@@ -50,7 +50,7 @@ class Aktivierung_Softmax:
         self.dinputs = np.empty_like(dvalues) #Wir machen einen uninitalisierten Array
 
         #Enumerate outputs and gradients:
-        for index, (single_output, single_dvalues) in enumerate(zip(self.output, dvalues)):
+        for index, (single_output, single_dvalues) in enumerate(zip(self.output, dvalues)): #???
             single_output = single_output.reshape(-1, 1) #Flatten out array
             jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
             #Calculate sample-wise gradient and add it to the array of sample gradients
@@ -58,18 +58,18 @@ class Aktivierung_Softmax:
 
 class Verlust:
 
-    def kalulieren(self, output, y):
+    def kalulieren(self, output, y): #??? y??? Wieso funktioniert forward ohni def (wA: Z.66+)
         sample_verluste = self.forward(output, y)
         data_verlust = np.mean(sample_verluste)
         return data_verlust
 
 class Verlust_CatCrossEnt(Verlust):
 
-    def forward(self, y_pred, y_true):
+    def forward(self, y_pred, y_true): #??? Was genau y_pred & y_true???
         samples = len(y_pred)
-        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)#??? Was isch das???
 
-        if len(y_true.shape) == 1:
+        if len(y_true.shape) == 1: #??? .shape und wieso == 1???
             korrekte_sicherheiten = y_pred_clipped[range(samples), y_true]
 
         elif len(y_true.shape) == 2:
@@ -82,11 +82,11 @@ class Verlust_CatCrossEnt(Verlust):
         samples = len(dvalues) #Anzahl samples
         labels = len(dvalues[0]) #Anzahl Labels in jedem Sample
 
-        if len(y_true.shape) == 1: #"If labels are sparse, turn them into 1hot vectors"
+        if len(y_true.shape) == 1: #"If labels are sparse, turn them into 1hot vectors" #???
             y_true = np.eye(labels)[y_true]
 
-        self.dinputs = -y_true / dvalues #Gradient ausrechenen
-        self.dinputs = self.dinputs / samples #Gradient normalisieren
+        self.dinputs = -y_true / dvalues #Gradient ausrechenen #??? Was Gradient und wieso so???
+        self.dinputs = self.dinputs / samples #Gradient normalisieren #???
 
 #Softmax-Klassifizierer - kombiniert SoftmaxAktivierung und CrossEntLoss für schnelleres backward
 class Aktivierung_Softmax_Verlust_CatCrossEnt():
@@ -95,7 +95,7 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
         self.aktivierung = Aktivierung_Softmax()
         self.verlust = Verlust_CatCrossEnt()
 
-    def forward(self, inputs, y_true):
+    def forward(self, inputs, y_true): #??? y_true???
         self.aktivierung.forward(inputs) #Output Layer Aktivierungsfunktion
         self.output = self.aktivierung.output #Set the ouput
         return self.verlust.kalulieren(self.output, y_true) #Lossvalue berechnen und geben
@@ -136,10 +136,10 @@ print("loss: ", loss)
 
 
 
-vorhersagen = np.argmax(loss_aktivierung.output, axis=1)
-if len(y.shape) == 2:
+vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
+if len(y.shape) == 2: #??? .shape und ==2???
     y = np.argmax(y, axis=1)
-genauigkeit = np.mean(vorhersagen==y)
+genauigkeit = np.mean(vorhersagen==y) #??? Wieso mean vo == ???
 print("Genau: ", genauigkeit)
 
 #Zruggpass:
