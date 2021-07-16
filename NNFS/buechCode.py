@@ -20,8 +20,7 @@ class Layer_Dense:
         #Berechnung des Outputs
         self.output = np.dot(inputs, self.gwicht) + self.biases
 
-        self.inputs = inputs
-    
+        self.inputs = inputs #Zwischenspeicherung für Zruggprop
     def backward(self, dvalues): #Zruggpropagation (Kap 9 bis Siite 214)
         self.dgwicht = np.dot(self.inputs.T, dvalues)
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
@@ -46,6 +45,16 @@ class Aktivierung_Softmax:
         wahrscheinlichkeiten = exp_werte / np.sum(exp_werte, axis=1, keepdims=True)
         self.output = wahrscheinlichkeiten
 
+    def backward(self, dvalues):
+        self.dinputs = np.empty_like(dvalues) #Wir machen einen uninitalisierten Array
+
+        #Enumerate outputs and gradients:
+        for index, (single_output, single_dvalues) in enumerate(zip(self.output, dvalues)):
+            single_output = single_output.reshape(-1, 1) #Flatten out array
+            jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
+            #Calculate sample-wise gradient and add it to the array of sample gradients
+            self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
+
 class Verlust:
 
     def kalulieren(self, output, y):
@@ -67,6 +76,17 @@ class Verlust_CatCrossEnt(Verlust):
 
         neg_log_wahrscheinlichkeiten = -np.log(korrekte_sicherheiten)
         return neg_log_wahrscheinlichkeiten
+
+    def backward(self, dvalues, y_true):
+        samples = len(dvalues) #Anzahl samples
+        labels = len(dvalues[0]) #Anzahl Labels in jedem Sample
+
+        if len(y_true.shape) == 1: #"If labels are sparse, turn them into 1hot vectors"
+            y_true = np.eye(labels)[y_true]
+
+        self.dinputs = -y_true / dvalues #Gradient ausrechenen
+        self.dinputs = self.dinputs / samples #Gradient normalisieren
+
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
 #Kreation eines Layers mit 2 Inputs und 3 Outputss

@@ -17,3 +17,9 @@ My final project is about the creation of a neural network for distinguishing tw
 STATUS: Bii Siite 215
 
 Problem: Verstah nöd ganz LOSS und Backpropagation
+-> Genauer: 
+
+----------------------------------------------------------------------------------------------------
+
+Arbetsnotize:
+-Für selbstgmachti Loss-Funktione: Siite 215 (Unterkap: Categorical Cross-Entropy loss derivative)
