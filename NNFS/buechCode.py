@@ -2,6 +2,7 @@
 
 import numpy as np
 import math
+import random
 import nnfs
 from nnfs.datasets import spiral_data
 from nnfs.datasets import vertical_data
@@ -20,7 +21,7 @@ class Layer_Dense:
         #Berechnung des Outputs
         self.output = np.dot(inputs, self.gwicht) + self.biases
 
-        self.inputs = inputs #Zwischenspeicherung für Zruggprop
+        self.inputs = inputs #Zwischenspeicherung für Zruggprop?
     def backward(self, dvalues): #Zruggpropagation (Kap 9 bis Siite 214)
         self.dgwicht = np.dot(self.inputs.T, dvalues)
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
