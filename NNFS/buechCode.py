@@ -34,7 +34,7 @@ class Aktivierung_ReLU: #???
         self.inputs = inputs
         self.output = np.maximum(0, inputs)
 
-    def backward(self, dvalues): #Zruggpropagation
+    def backward(self, dvalues): #Zruggpropagation - ???
         self.dinputs = dvalues.copy()
 
         self.dinputs[self.inputs <= 0] = 0
