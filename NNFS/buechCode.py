@@ -111,12 +111,23 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
 
 class Optimizer_SGD:
     #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
-    def __init__(self, lern_rate=1.0):
+    def __init__(self, lern_rate=1.0, decay=0):
         self.lern_rate = lern_rate
+        self.momentane_lern_rate = lern_rate
+        self.decay = decay
+        self.iterationen = 0
+    #Einmal aufrufen BEVOR irgendein Parameter updatet
+    def pre_update_params(self):
+        if self.decay:
+            self.momentane_lern_rate = self.lern_rate * \
+                (1. / (1. + self.decay * self.iterationen))
     #Parameter updaten
     def update_params(self, layer):
         layer.gwicht += -self.lern_rate * layer.dgwicht
         layer.biases += -self.lern_rate * layer.dbiases
+    #Einmal aufrufen NACHDEM Parameter updatet
+    def post_update_params(self):
+        self.iterationen += 1
 
 
 #Erstellen eines Datensets
@@ -131,7 +142,7 @@ dense2 = Layer_Dense(64, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
-optimizer = Optimizer_SGD()
+optimizer = Optimizer_SGD(decay=1e-3)
 
 
 for epoche in range(10001):
@@ -159,7 +170,8 @@ for epoche in range(10001):
     if not epoche % 100:
         print(f'Epoche: {epoche}, ' +
         f'Genau: {genauigkeit:.3f}, ' +
-        f'Loss: {loss:.3f}')
+        f'Loss: {loss:.3f}, ' +
+        f'LR: {optimizer.momentane_lern_rate}')
 
     #Zruggpass:
     loss_aktivierung.backward(loss_aktivierung.output, y)
@@ -167,8 +179,10 @@ for epoche in range(10001):
     aktivierung1.backward(dense2.dinputs)
     dense1.backward(aktivierung1.dinputs)
 
+    optimizer.pre_update_params()
     optimizer.update_params(dense1)
     optimizer.update_params(dense2)
+    optimizer.post_update_params()
 
     #Gradienten:
     #print(dense1.dgwicht)
