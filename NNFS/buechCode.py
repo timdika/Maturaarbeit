@@ -109,47 +109,70 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
         self.dinputs[range(samples), y_true] -= 1 #Gradient berechnen
         self.dinputs = self.dinputs / samples #Gradienten normalisieren
 
+class Optimizer_SGD:
+    #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
+    def __init__(self, lern_rate=1.0):
+        self.lern_rate = lern_rate
+    #Parameter updaten
+    def update_params(self, layer):
+        layer.gwicht += -self.lern_rate * layer.dgwicht
+        layer.biases += -self.lern_rate * layer.dbiases
+
+
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
-dense1 = Layer_Dense(2, 3)
+dense1 = Layer_Dense(2, 64)
 
 aktivierung1 = Aktivierung_ReLU()
 
 
-dense2 = Layer_Dense(3, 3)
+dense2 = Layer_Dense(64, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
-#Forward-Pass der Daten durch Layer
-dense1.forward(X)
 
-aktivierung1.forward(dense1.output)
-
-dense2.forward(aktivierung1.output)
+optimizer = Optimizer_SGD()
 
 
-loss = loss_aktivierung.forward(dense2.output, y)
+for epoche in range(10001):
+    #Forward-Pass der Daten durch Layer
+    dense1.forward(X)
 
-print(loss_aktivierung.output[:5])#Die erschte 5 Samples
+    aktivierung1.forward(dense1.output)
 
-print("loss: ", loss)
+    dense2.forward(aktivierung1.output)
+
+
+    loss = loss_aktivierung.forward(dense2.output, y)
+
+    #print(loss_aktivierung.output[:5])#Die erschte 5 Samples
+
+    #print("loss: ", loss)
 
 
 
-vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
-if len(y.shape) == 2: #??? .shape und ==2???
-    y = np.argmax(y, axis=1)
-genauigkeit = np.mean(vorhersagen==y) #??? Wieso mean vo == ???
-print("Genau: ", genauigkeit)
+    vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
+    if len(y.shape) == 2: #??? .shape und ==2???
+        y = np.argmax(y, axis=1)
+    genauigkeit = np.mean(vorhersagen==y) #??? Wieso mean vo == ???
+    
+    if not epoche % 100:
+        print(f'Epoche: {epoche}, ' +
+        f'Genau: {genauigkeit:.3f}, ' +
+        f'Loss: {loss:.3f}')
 
-#Zruggpass:
-loss_aktivierung.backward(loss_aktivierung.output, y)
-dense2.backward(loss_aktivierung.dinputs)
-aktivierung1.backward(dense2.dinputs)
-dense1.backward(aktivierung1.dinputs)
+    #Zruggpass:
+    loss_aktivierung.backward(loss_aktivierung.output, y)
+    dense2.backward(loss_aktivierung.dinputs)
+    aktivierung1.backward(dense2.dinputs)
+    dense1.backward(aktivierung1.dinputs)
 
-#Gradienten:
-print(dense1.dgwicht)
-print(dense1.dbiases)
-print(dense2.dgwicht)
-print(dense2.dbiases)
+    optimizer.update_params(dense1)
+    optimizer.update_params(dense2)
+
+    #Gradienten:
+    #print(dense1.dgwicht)
+    #print(dense1.dbiases)
+    #print(dense2.dgwicht)
+    #print(dense2.dbiases)
+    
