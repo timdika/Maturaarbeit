@@ -111,11 +111,12 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
 
 class Optimizer_SGD:
     #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
-    def __init__(self, lern_rate=1.0, decay=0):
+    def __init__(self, lern_rate=1.0, decay=0., momentum = 0.):
         self.lern_rate = lern_rate
         self.momentane_lern_rate = lern_rate
         self.decay = decay
         self.iterationen = 0
+        self.momentum = momentum
     #Einmal aufrufen BEVOR irgendein Parameter updatet
     def pre_update_params(self):
         if self.decay:
@@ -123,8 +124,35 @@ class Optimizer_SGD:
                 (1. / (1. + self.decay * self.iterationen))
     #Parameter updaten
     def update_params(self, layer):
-        layer.gwicht += -self.lern_rate * layer.dgwicht
-        layer.biases += -self.lern_rate * layer.dbiases
+        #If we use Momentum
+        if self.momentum:
+            #If layer does not contain momentum arrays, create them filled with 0s
+            if not hasattr(layer, 'gwicht_momenta'):
+                layer.gwicht_momenta = np.zeros_like(layer.gwicht)
+                #If there is no momentum array for weights the array doesnt exst for biases yet either
+                layer.bias_momenta = np.zeros_like(layer.biases)
+            #Build weight updates with momentum - take previous updates multiplied by retain factor
+            #and update with current gradients
+            gwicht_updates = \
+                self.momentum * layer.gwicht_momenta - \
+                self.momentane_lern_rate * layer.dgwicht
+            layer.gwicht_momenta = gwicht_updates
+            #Build Bias updates
+            bias_updates = \
+                self.momentum * layer.bias_momenta - \
+                self.momentane_lern_rate * layer.dbiases
+            layer.bias_momenta = bias_updates
+        #Vanilla SGD updates (as before mometum update)
+        else: 
+
+            gwicht_updates = -self.momentane_lern_rate * \
+                layer.dgwicht
+            bias_updates = -self.momentane_lern_rate * \
+                layer.dbiases
+
+        #Update weights and biases using either vanilla or momentum updates:
+        layer.gwicht += gwicht_updates
+        layer.biases += bias_updates
     #Einmal aufrufen NACHDEM Parameter updatet
     def post_update_params(self):
         self.iterationen += 1
@@ -142,7 +170,7 @@ dense2 = Layer_Dense(64, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
-optimizer = Optimizer_SGD(decay=1e-3)
+optimizer = Optimizer_SGD(decay=1e-3, momentum=0.9)
 
 
 for epoche in range(10001):
