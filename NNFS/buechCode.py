@@ -1,5 +1,7 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
+#STAND: 28.10.2021
+
 import numpy as np
 import math
 import random
@@ -109,7 +111,7 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
         self.dinputs[range(samples), y_true] -= 1 #Gradient berechnen
         self.dinputs = self.dinputs / samples #Gradienten normalisieren
 
-class Optimizer_SGD:
+class Optimizer_SGD: #Gute Start-Lernrate = 1.0, decay runter zu 0.1
     #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
     def __init__(self, lern_rate=1.0, decay=0., momentum = 0.):
         self.lern_rate = lern_rate
@@ -157,6 +159,117 @@ class Optimizer_SGD:
     def post_update_params(self):
         self.iterationen += 1
 
+#AdaGrad: 
+class Optimizer_AdaGrad:
+    #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
+    def __init__(self, lern_rate=1.0, decay=0., epsilon=1e-7):
+        self.lern_rate = lern_rate
+        self.momentane_lern_rate = lern_rate
+        self.decay = decay
+        self.iterationen = 0
+        self.epsilon = epsilon
+    #Einmal aufrufen BEVOR irgendein Parameter updatet
+    def pre_update_params(self):
+        if self.decay:
+            self.momentane_lern_rate = self.lern_rate * \
+                (1. / (1. + self.decay * self.iterationen))
+    #Parameter updaten
+    def update_params(self, layer):
+        #If we use Momentum
+        if not hasattr(layer, 'gwicht_cache'):
+            layer.gwicht_cache = np.zeros_like(layer.gwicht)
+            layer.bias_cache = np.zeros_like(layer.biases)
+        layer.gwicht_cache += layer.dgwicht ** 2
+        layer.bias_cache += layer.dbiases ** 2
+
+
+        layer.gwicht += -self.momentane_lern_rate * \
+                        layer.dgwicht / \
+                        (np.sqrt(layer.gwicht_cache) + self.epsilon)
+        layer.biases += -self.momentane_lern_rate * \
+                        layer.dbiases / \
+                        (np.sqrt(layer.bias_cache) + self.epsilon)
+    def post_update_params(self):
+        self.iterationen += 1
+
+
+
+#RMSProp:
+class Optimizer_RMSProp:
+    #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
+    def __init__(self, lern_rate=0.001, decay=0., epsilon=1e-7, rho=0.9):
+        self.lern_rate = lern_rate
+        self.momentane_lern_rate = lern_rate
+        self.decay = decay
+        self.iterationen = 0
+        self.epsilon = epsilon
+        self.rho = rho
+    #Einmal aufrufen BEVOR irgendein Parameter updatet
+    def pre_update_params(self):
+        if self.decay:
+            self.momentane_lern_rate = self.lern_rate * \
+                (1. / (1. + self.decay * self.iterationen))
+    #Parameter updaten
+    def update_params(self, layer):
+        #If we use Momentum
+        if not hasattr(layer, 'gwicht_cache'):
+            layer.gwicht_cache = np.zeros_like(layer.gwicht)
+            layer.bias_cache = np.zeros_like(layer.biases)
+        
+        layer.gwicht_cache = self.rho * layer.gwicht_cache + (1-self.rho) * layer.dgwicht ** 2
+        layer.bias_cache = self.rho * layer.bias_cache + (1-self.rho) * layer.dbiases ** 2
+
+
+        layer.gwicht += -self.momentane_lern_rate * \
+                        layer.dgwicht / \
+                        (np.sqrt(layer.gwicht_cache) + self.epsilon)
+        layer.biases += -self.momentane_lern_rate * \
+                        layer.dbiases / \
+                        (np.sqrt(layer.bias_cache) + self.epsilon)
+    def post_update_params(self):
+        self.iterationen += 1
+
+class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
+    #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
+    def __init__(self, lern_rate=0.001, decay=0., epsilon=1e-7, beta_1=0.9, beta_2=0.999):
+        self.lern_rate = lern_rate
+        self.momentane_lern_rate = lern_rate
+        self.decay = decay
+        self.iterationen = 0
+        self.epsilon = epsilon
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+    #Einmal aufrufen BEVOR irgendein Parameter updatet
+    def pre_update_params(self):
+        if self.decay:
+            self.momentane_lern_rate = self.lern_rate * \
+                (1. / (1. + self.decay * self.iterationen))
+    #Parameter updaten
+    def update_params(self, layer):
+        #If we use Momentum
+        if not hasattr(layer, 'gwicht_cache'):
+            layer.gwicht_momenta = np.zeros_like(layer.gwicht)
+            layer.gwicht_cache = np.zeros_like(layer.gwicht)
+            layer.bias_momenta = np.zeros_like(layer.biases)
+            layer.bias_cache = np.zeros_like(layer.biases)
+
+        layer.gwicht_momenta = self.beta_1 * layer.gwicht_momenta + (1-self.beta_1) * layer.dgwicht
+        layer.bias_momenta = self.beta_1 * layer.bias_momenta + (1-self.beta_1) * layer.dbiases
+
+        gwicht_momenta_korrigiert = layer.gwicht_momenta / (1-self.beta_1 ** (self.iterationen + 1))
+        bias_momenta_korrigiert = layer.bias_momenta / (1-self.beta_1 ** (self.iterationen + 1))
+        
+        layer.gwicht_cache = self.beta_2 * layer.gwicht_cache + (1-self.beta_2) * layer.dgwicht ** 2
+        layer.bias_cache = self.beta_2 * layer.bias_cache + (1-self.beta_2) * layer.dbiases ** 2
+
+        gwicht_cache_korrigiert = layer.gwicht_cache / (1-self.beta_2 ** (self.iterationen + 1))
+        bias_cache_korrigiert = layer.bias_cache / (1-self.beta_2 ** (self.iterationen + 1))
+
+
+        layer.gwicht += -self.momentane_lern_rate * gwicht_momenta_korrigiert / (np.sqrt(gwicht_cache_korrigiert) + self.epsilon)
+        layer.biases += -self.momentane_lern_rate * bias_momenta_korrigiert / (np.sqrt(bias_cache_korrigiert) + self.epsilon)
+    def post_update_params(self):
+        self.iterationen += 1
 
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
@@ -170,7 +283,7 @@ dense2 = Layer_Dense(64, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
-optimizer = Optimizer_SGD(decay=1e-3, momentum=0.9)
+optimizer = HerrAdam(lern_rate=0.05, decay=5e-7)
 
 
 for epoche in range(10001):
@@ -217,4 +330,4 @@ for epoche in range(10001):
     #print(dense1.dbiases)
     #print(dense2.dgwicht)
     #print(dense2.dbiases)
-    
+       
