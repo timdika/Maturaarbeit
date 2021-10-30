@@ -273,6 +273,7 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
 
 #Erstellen eines Datensets
 X, y = spiral_data(samples=100, classes=3)
+
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
 dense1 = Layer_Dense(2, 64)
 
@@ -330,4 +331,25 @@ for epoche in range(10001):
     #print(dense1.dbiases)
     #print(dense2.dgwicht)
     #print(dense2.dbiases)
-       
+
+
+#Erstellung eines Test-Datensets:
+X_test, y_test = spiral_data(samples=100, classes=3)
+
+dense1.forward(X_test)
+
+aktivierung1.forward(dense1.output)
+
+dense2.forward(aktivierung1.output)
+
+
+loss = loss_aktivierung.forward(dense2.output, y)
+
+
+
+vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
+   
+if len(y_test.shape) == 2: #??? .shape und ==2???
+    y_test = np.argmax(y_test, axis=1)
+genauigkeit = np.mean(vorhersagen==y_test)
+print(f'validierung, genau: {genauigkeit:.3f}, loss: {loss:.3f}')
