@@ -13,7 +13,7 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Mit Kapitel 12 fertig
+STATUS: Mit Kapitel 13 fertig
 
 Problem: Verstah nöd ganz LOSS und Backpropagation
 -> Genauer: Ich verstah einigi Sache wo ich im Code mache nöd. D Rolle vo "y" ii allne Funktione
