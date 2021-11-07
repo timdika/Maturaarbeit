@@ -1,5 +1,6 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
+#PROBLEM: ES FEHLT IRGENDWO E FUNKTION MIT LOSS
 
 import numpy as np
 import math
@@ -350,8 +351,8 @@ for epoche in range(10001):
     data_loss = loss_aktivierung.forward(dense2.output, y)
 
     regularization_loss = \
-        loss_aktivierung.loss.regularization_loss(dense1) + \
-        loss_aktivierung.loss.regularization_loss(dense2)
+        loss_aktivierung.verlust.regularization_loss(dense1) + \
+        loss_aktivierung.verlust.regularization_loss(dense2)
 
     loss = data_loss + regularization_loss
 
