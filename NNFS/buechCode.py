@@ -13,10 +13,16 @@ nnfs.init()
 #Dense Layer:
 class Layer_Dense:
     #Initalisierung des Layers
-    def __init__(self, n_inputs, n_neuronen):
+    def __init__(self, n_inputs, n_neuronen, gwicht_regularizierer_l1=0, gwicht_regularizierer_l2=0, 
+    bias_regularizierer_l1=0, bias_regularizierer_l2=0):
         #Gwicht und Biases Initalisierung
         self.gwicht = 0.01 * np.random.randn(n_inputs, n_neuronen)
         self.biases = np.zeros((1, n_neuronen))
+
+        self.gwicht_regularizierer_l1 = gwicht_regularizierer_l1
+        self.gwicht_regularizierer_l2 = gwicht_regularizierer_l2
+        self.bias_regularizierer_l1 = bias_regularizierer_l1
+        self.bias_regularizierer_l2 = bias_regularizierer_l2
     #Forward-Pass
     def forward(self, inputs):
         #Berechnung des Outputs
@@ -26,6 +32,26 @@ class Layer_Dense:
     def backward(self, dvalues): #Zruggpropagation (Kap 9 bis Siite 214)
         self.dgwicht = np.dot(self.inputs.T, dvalues)
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
+
+        # Gradients on regularization
+        # L1 on weights
+        if self.gwicht_regularizierer_l1 > 0:
+            dL1 = np.ones_like(self.gwicht)
+            dL1[self.gwicht < 0] = -1
+            self.dgwicht += self.gwicht_regularizierer_l1 * dL1
+        # L2 on weights
+        if self.gwicht_regularizierer_l2 > 0:
+            self.dgwicht += 2 * self.gwicht_regularizierer_l2 * \
+            self.gwicht
+        # L1 on biases
+        if self.bias_regularizierer_l1 > 0:
+            dL1 = np.ones_like(self.biases)
+            dL1[self.biases < 0] = -1
+            self.dbiases += self.bias_regularizierer_l1 * dL1
+        # L2 on biases
+        if self.bias_regularizierer_l2 > 0:
+            self.dbiases += 2 * self.bias_regularizierer_l2 * \
+            self.biases
 
         self.dinputs = np.dot(dvalues, self.gwicht.T)
 
@@ -59,6 +85,32 @@ class Aktivierung_Softmax:
 
 class Verlust:
 
+    def regularization_loss(self, layer):
+        # 0 by default
+        regularization_loss = 0
+        # L1 regularization - weights
+        # calculate only when factor greater than 0
+        if layer.gwicht_regularizierer_l1 > 0:
+            regularization_loss += layer.gwicht_regularizierer_l1 * \
+            np.sum(np.abs(layer.gwicht))
+        # L2 regularization - weights
+        if layer.gwicht_regularizierer_l2 > 0:
+            regularization_loss += layer.gwicht_regularizierer_l2 * \
+            np.sum(layer.gwicht *
+            layer.gwicht)
+
+        # L1 regularization - biases
+        # calculate only when factor greater than 0
+        if layer.bias_regularizierer_l1 > 0:
+            regularization_loss += layer.bias_regularizierer_l1 * \
+            np.sum(np.abs(layer.biases))
+        # L2 regularization - biases
+        if layer.bias_regularizierer_l2 > 0:
+            regularization_loss += layer.bias_regularizierer_l2 * \
+            np.sum(layer.biases *
+            layer.biases)
+        return regularization_loss
+
     def kalulieren(self, output, y): #??? y??? Wieso funktioniert forward ohni def (wA: Z.66+)
         sample_verluste = self.forward(output, y)
         data_verlust = np.mean(sample_verluste)
@@ -89,6 +141,7 @@ class Verlust_CatCrossEnt(Verlust):
         self.dinputs = -y_true / dvalues #Gradient ausrechenen #??? Was Gradient und wieso so???
         self.dinputs = self.dinputs / samples #Gradient normalisieren #???
 
+    
 #Softmax-Klassifizierer - kombiniert SoftmaxAktivierung und CrossEntLoss für schnelleres backward
 class Aktivierung_Softmax_Verlust_CatCrossEnt():
 
@@ -274,7 +327,7 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
 X, y = spiral_data(samples=100, classes=3)
 
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
-dense1 = Layer_Dense(2, 64)
+dense1 = Layer_Dense(2, 64, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4)
 
 aktivierung1 = Aktivierung_ReLU()
 
@@ -283,7 +336,7 @@ dense2 = Layer_Dense(64, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
-optimizer = HerrAdam(lern_rate=0.05, decay=5e-7)
+optimizer = HerrAdam(lern_rate=0.02, decay=5e-7)
 
 
 for epoche in range(10001):
@@ -294,13 +347,13 @@ for epoche in range(10001):
 
     dense2.forward(aktivierung1.output)
 
+    data_loss = loss_aktivierung.forward(dense2.output, y)
 
-    loss = loss_aktivierung.forward(dense2.output, y)
+    regularization_loss = \
+        loss_aktivierung.loss.regularization_loss(dense1) + \
+        loss_aktivierung.loss.regularization_loss(dense2)
 
-    #print(loss_aktivierung.output[:5])#Die erschte 5 Samples
-
-    #print("loss: ", loss)
-
+    loss = data_loss + regularization_loss
 
 
     vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
@@ -312,6 +365,8 @@ for epoche in range(10001):
         print(f'Epoche: {epoche}, ' +
         f'Genau: {genauigkeit:.3f}, ' +
         f'Loss: {loss:.3f}, ' +
+        f'data_loss: {data_loss:.3f}, ' +
+        f'reg_loss: {regularization_loss:.3f}, ' +
         f'LR: {optimizer.momentane_lern_rate}')
 
     #Zruggpass:
