@@ -25,3 +25,6 @@ Problem: Verstah nöd ganz LOSS und Backpropagation
 
 Arbetsnotize:
 -Für selbstgmachti Loss-Funktione: Siite 215 (Unterkap: Categorical Cross-Entropy loss derivative)
+
+TECHNISCHI DETAILS:
+Python 3.9.7

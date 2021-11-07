@@ -1,6 +1,5 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
-#STAND: 28.10.2021
 
 import numpy as np
 import math
