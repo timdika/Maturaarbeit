@@ -7,6 +7,7 @@ from PIL import Image
 import random
 
 
+#LAYER:
 class Layer_Dense:
     def __init__(self, n_inputs, n_neuronen):
         self.gwicht = 0.01 * np.random.randn(n_inputs, n_neuronen)
@@ -149,6 +150,5 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
         layer.biases += -self.momentane_lern_rate * bias_momenta_korrigiert / (np.sqrt(bias_cache_korrigiert) + self.epsilon)
     def post_update_params(self):
         self.iterationen += 1
-
 
 
