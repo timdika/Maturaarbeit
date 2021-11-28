@@ -325,15 +325,15 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
         self.iterationen += 1
 
 #Erstellen eines Datensets
-X, y = spiral_data(samples=100, classes=3)
+X, y = spiral_data(samples=1000, classes=3)
 
 #Kreation eines Layers mit 2 Inputs und 3 Outputss
-dense1 = Layer_Dense(2, 64, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4)
+dense1 = Layer_Dense(2, 512, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4)
 
 aktivierung1 = Aktivierung_ReLU()
 
 
-dense2 = Layer_Dense(64, 3)
+dense2 = Layer_Dense(512, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
