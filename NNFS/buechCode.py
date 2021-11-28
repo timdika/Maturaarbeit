@@ -56,6 +56,20 @@ class Layer_Dense:
 
         self.dinputs = np.dot(dvalues, self.gwicht.T)
 
+
+class Layer_Dropout:
+
+    def __init__(self, rate):
+        self.rate = 1 - rate
+
+    def forward(self, inputs):
+        self.inputs = inputs
+        self.binary_mask = np.random.binomial(1, self.rate, size=inputs.shape) / self.rate
+        self.output = inputs * self.binary_mask
+
+    def backward(self, dvalues):
+        self.dinputs = dvalues * self.binary_mask
+
 class Aktivierung_ReLU: #???
 
     def forward(self, inputs):
@@ -327,13 +341,14 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
 #Erstellen eines Datensets
 X, y = spiral_data(samples=1000, classes=3)
 
-#Kreation eines Layers mit 2 Inputs und 3 Outputss
-dense1 = Layer_Dense(2, 512, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4)
+#Kreation eines Layers mit 2 Inputs und 64 Outputs
+dense1 = Layer_Dense(2, 64, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4)
 
 aktivierung1 = Aktivierung_ReLU()
 
+dropout1 = Layer_Dropout(0.1)
 
-dense2 = Layer_Dense(512, 3)
+dense2 = Layer_Dense(64, 3)
 
 loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
@@ -345,6 +360,8 @@ for epoche in range(10001):
     dense1.forward(X)
 
     aktivierung1.forward(dense1.output)
+
+    dropout1.forward(aktivierung1.output)
 
     dense2.forward(aktivierung1.output)
 
@@ -373,6 +390,7 @@ for epoche in range(10001):
     #Zruggpass:
     loss_aktivierung.backward(loss_aktivierung.output, y)
     dense2.backward(loss_aktivierung.dinputs)
+    dropout1.backward(dense2.inputs)
     aktivierung1.backward(dense2.dinputs)
     dense1.backward(aktivierung1.dinputs)
 
