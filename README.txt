@@ -13,18 +13,11 @@ My final project is about the creation of a neural network for distinguishing tw
 
 ----------------------------------------------------------------------------------------------------
 
-STATUS: Mit Kapitel 13 fertig
-
-Problem: Verstah nöd ganz LOSS und Backpropagation
--> Genauer: Ich verstah einigi Sache wo ich im Code mache nöd. D Rolle vo "y" ii allne Funktione
-    gseh ich nöd. Uusserdem: y_true, y_pred sind für mich nöd ganz verständlich. Generell dä Code
-    vo dä letschte 2 Kapitel (öppe) gitt mer z'schaffe. ZMACHE: Namal Kapitel duuregah und genau luege
-    wo was passiert und WIESO. 
-
-----------------------------------------------------------------------------------------------------
-
 Arbetsnotize:
 -Für selbstgmachti Loss-Funktione: Siite 215 (Unterkap: Categorical Cross-Entropy loss derivative)
 
 TECHNISCHI DETAILS:
 Python 3.9.7
+
+Packete:
+NumPy, Math, Random, NNFS
