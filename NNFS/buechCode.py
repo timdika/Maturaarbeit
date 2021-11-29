@@ -1,6 +1,7 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
 #PROBLEM: ES FEHLT IRGENDWO E FUNKTION MIT LOSS
+#STATUS: Erste zwei Zeilen Code von Kapitel "Model"
 
 import numpy as np
 import math
@@ -8,6 +9,9 @@ import random
 import nnfs
 from nnfs.datasets import spiral_data
 from nnfs.datasets import vertical_data
+from nnfs.datasets import sine_data # Kapitel: Model 
+
+X, y = sine_data #Richtiger Ort?
 
 nnfs.init()
 
