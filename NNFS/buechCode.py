@@ -103,7 +103,7 @@ class Aktivierung_Softmax:
 
 class Aktivierung_Linear:
 
-    def forward(self, inputs, training):
+    def forward(self, inputs): #TRAINING
         #Just remember values
         self.inputs = inputs
         self.output = inputs
@@ -355,7 +355,7 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
         self.iterationen += 1
 
 class Layer_Input:
-    def forward(self, inputs, training):
+    def forward(self, inputs): #TRAINING
 
         self.output = inputs
 
@@ -427,7 +427,7 @@ model.add(Aktivierung_ReLU())
 model.add(Layer_Dense(64, 64))
 model.add(Aktivierung_ReLU())
 model.add(Layer_Dense(64, 1))
-model.add(Aktivierung_Linear)
+model.add(Aktivierung_Linear())
 
 #IM BUECH ISCH loss=Loss_MeanSquaredError()
 model.set(loss=Verlust(), optimizer=HerrAdam(lern_rate=0.005, decay=1e-3))
