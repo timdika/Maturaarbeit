@@ -355,7 +355,8 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
         self.iterationen += 1
 
 class Layer_Input:
-    def forward(self, inputs):
+    def forward(self, inputs, training):
+
         self.output = inputs
 
 class Model:
@@ -400,6 +401,7 @@ class Model:
 
             output = self.forward(X)
 
+            #Temporär:
             print(output)
             exit()
     
