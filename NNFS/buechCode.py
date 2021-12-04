@@ -1,7 +1,6 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
-#PROBLEM: ES FEHLT IRGENDWO E FUNKTION MIT LOSS
-#STATUS: Erste zwei Zeilen Code von Kapitel "Model"
+#PROBLEM: ES FEHLT IRGENDWO E FUNKTION MIT LOSS - Linear dine, Sigmoid nöd. Welli denn?
 
 import numpy as np
 import math
@@ -11,7 +10,7 @@ from nnfs.datasets import spiral_data
 from nnfs.datasets import vertical_data
 from nnfs.datasets import sine_data # Kapitel: Model 
 
-X, y = sine_data #Richtiger Ort?
+
 
 nnfs.init()
 
@@ -102,6 +101,19 @@ class Aktivierung_Softmax:
             #Calculate sample-wise gradient and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
 
+class Aktivierung_Linear:
+
+    def forward(self, inputs, training):
+        #Just remember values
+        self.inputs = inputs
+        self.output = inputs
+
+    def backward(self, dvalues):
+        #derivative is 1, 1 * dvalues = dvalues - the chain rule (Kettenregel)
+        self.dinputs = dvalues.copy()
+
+    def vorhersagen(self, outputs):
+        return outputs
 class Verlust:
 
     def regularization_loss(self, layer):
@@ -341,6 +353,86 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
         layer.biases += -self.momentane_lern_rate * bias_momenta_korrigiert / (np.sqrt(bias_cache_korrigiert) + self.epsilon)
     def post_update_params(self):
         self.iterationen += 1
+
+class Layer_Input:
+    def forward(self, inputs):
+        self.output = inputs
+
+class Model:
+
+    def __init__(self):
+        #Create a list of network objects
+        self.layers = []
+    #Add objects to the model:
+    def add(self, layer):
+        self.layers.append(layer)
+
+    def set(self, *, loss, optimizer): # Set loss and optimizer
+        self.loss = loss
+        self.optimizer = optimizer
+    
+    def finalize(self):
+        #Create and set the inputs layer:
+        self.input_layer = Layer_Input()
+
+        #Count all the objects:
+        layer_count = len(self.layers)
+
+        #Iterate the objects:
+        for i in range(layer_count):
+
+            #If its the first layer, the prev. layer object is the input layer:
+            if i == 0:
+                self.layers[i].prev = self.input_layer
+                self.layers[i].next = self.layers[i+1]
+            #All layers except for the first and the last:
+            elif i < layer_count - 1:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.layers[i+1]
+            #The last layer - the next object is the loss:
+            else:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.loss
+
+    def train(self, X, y, *, epochen=1, print_every=1): #Model trainieren
+        #Main training loop:
+        for epoch in range(1, epochen+1):
+
+            output = self.forward(X)
+
+            print(output)
+            exit()
+    
+    def forward(self, X):
+
+        self.input_layer.forward(X)
+
+        for layer in self.layers:
+            layer.forward(layer.prev.output)
+
+        return layer.output
+
+
+
+X, y = sine_data() #Richtiger Ort?
+
+#Model initalisieren:
+model = Model()
+
+#Add layers:
+model.add(Layer_Dense(1, 64))
+model.add(Aktivierung_ReLU())
+model.add(Layer_Dense(64, 64))
+model.add(Aktivierung_ReLU())
+model.add(Layer_Dense(64, 1))
+model.add(Aktivierung_Linear)
+
+#IM BUECH ISCH loss=Loss_MeanSquaredError()
+model.set(loss=Verlust(), optimizer=HerrAdam(lern_rate=0.005, decay=1e-3))
+
+model.finalize()
+
+model.train(X, y, epochen=10000, print_every=100)
 
 #Erstellen eines Datensets
 X, y = spiral_data(samples=1000, classes=3)
