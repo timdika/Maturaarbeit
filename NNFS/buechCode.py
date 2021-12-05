@@ -79,10 +79,13 @@ class Aktivierung_ReLU: #???
         self.inputs = inputs
         self.output = np.maximum(0, inputs)
 
-    def backward(self, dvalues): #Zruggpropagation - ???
+    def backward(self, dvalues):
         self.dinputs = dvalues.copy()
 
         self.dinputs[self.inputs <= 0] = 0
+
+    def vorhersagen(self, outputs):
+        return outputs
 
 class Aktivierung_Softmax:
     
@@ -100,6 +103,9 @@ class Aktivierung_Softmax:
             jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
             #Calculate sample-wise gradient and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
+    
+    def vorhersagen(self, outputs):
+        return np.argmax(outputs, axis=1)
 
 class Aktivierung_Linear:
 
@@ -114,38 +120,60 @@ class Aktivierung_Linear:
 
     def vorhersagen(self, outputs):
         return outputs
+
+class Aktivierung_Sigmoid:
+
+    def forward(self, inputs):
+        self.inputs = inputs
+        self.output = 1 / (1 + np.exp(-inputs))
+
+    def backward(self, dvalues):
+        self.dinputs = dvalues * (1 - self.output) * self.output
+
+    def vorhersagen(self, outputs):
+        return (outputs > 0.5) * 1
 class Verlust:
 
-    def regularization_loss(self, layer):
+    def regularization_loss(self):
         # 0 by default
         regularization_loss = 0
         # L1 regularization - weights
         # calculate only when factor greater than 0
-        if layer.gwicht_regularizierer_l1 > 0:
-            regularization_loss += layer.gwicht_regularizierer_l1 * \
-            np.sum(np.abs(layer.gwicht))
-        # L2 regularization - weights
-        if layer.gwicht_regularizierer_l2 > 0:
-            regularization_loss += layer.gwicht_regularizierer_l2 * \
-            np.sum(layer.gwicht *
-            layer.gwicht)
+        for layer in self.trainable_layers:
 
-        # L1 regularization - biases
-        # calculate only when factor greater than 0
-        if layer.bias_regularizierer_l1 > 0:
-            regularization_loss += layer.bias_regularizierer_l1 * \
-            np.sum(np.abs(layer.biases))
-        # L2 regularization - biases
-        if layer.bias_regularizierer_l2 > 0:
-            regularization_loss += layer.bias_regularizierer_l2 * \
-            np.sum(layer.biases *
-            layer.biases)
+            if layer.gwicht_regularizierer_l1 > 0:
+                regularization_loss += layer.gwicht_regularizierer_l1 * \
+                np.sum(np.abs(layer.gwicht))
+            # L2 regularization - weights
+            if layer.gwicht_regularizierer_l2 > 0:
+                regularization_loss += layer.gwicht_regularizierer_l2 * \
+                np.sum(layer.gwicht *
+                layer.gwicht)
+
+            # L1 regularization - biases
+            # calculate only when factor greater than 0
+            if layer.bias_regularizierer_l1 > 0:
+                regularization_loss += layer.bias_regularizierer_l1 * \
+                np.sum(np.abs(layer.biases))
+            # L2 regularization - biases
+            if layer.bias_regularizierer_l2 > 0:
+                regularization_loss += layer.bias_regularizierer_l2 * \
+                np.sum(layer.biases *
+                layer.biases)
+        
         return regularization_loss
+    
+    #Set/remember trainable layers:
+    def remember_trainable_layers(self, trainable_layers):
+        self.trainable_layers = trainable_layers
 
-    def kalulieren(self, output, y): #??? y??? Wieso funktioniert forward ohni def (wA: Z.66+)
+    def kalkulieren(self, output, y):  #Wieso funktioniert forward ohni def (wA: Z.66+)
+        #Calculate sample losses:
         sample_verluste = self.forward(output, y)
+        #Calculate mean loss:
         data_verlust = np.mean(sample_verluste)
-        return data_verlust
+        #Return the data and reg loss:
+        return data_verlust, self.regularization_loss()
 
 class Verlust_CatCrossEnt(Verlust):
 
@@ -183,7 +211,7 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
     def forward(self, inputs, y_true): #??? y_true???
         self.aktivierung.forward(inputs) #Output Layer Aktivierungsfunktion
         self.output = self.aktivierung.output #Set the ouput
-        return self.verlust.kalulieren(self.output, y_true) #Lossvalue berechnen und geben
+        return self.verlust.kalkulieren(self.output, y_true) #Lossvalue berechnen und geben
 
     def backward(self, dvalues, y_true):
         samples = len(dvalues) #Anzahl samples
@@ -193,6 +221,23 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
         self.dinputs = dvalues.copy() #Kopieren für sichere Modifizierung
         self.dinputs[range(samples), y_true] -= 1 #Gradient berechnen
         self.dinputs = self.dinputs / samples #Gradienten normalisieren
+
+class Loss_MeanSquaredError(Verlust):
+
+    def forward(self, y_pred, y_true):
+
+        sample_losses = np.mean((y_true - y_pred)**2, axis=1)
+
+        return sample_losses
+
+    def backward(self, dvalues, y_true):
+
+        samples = len(dvalues)
+        outputs = len(dvalues[0])
+
+        self.dinputs = -2 * (y_true - dvalues) / outputs
+
+        self.dinputs = self.dinputs / samples
 
 class Optimizer_SGD: #Gute Start-Lernrate = 1.0, decay runter zu 0.1
     #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
@@ -359,6 +404,30 @@ class Layer_Input:
 
         self.output = inputs
 
+class Genauigkeit:
+
+    def kalkulieren(self, vorhersagen, y):
+
+        vergleiche = self.compare(vorhersagen, y)
+
+        genauigkeit = np.mean(vergleiche)
+
+        return genauigkeit
+
+#WICHTIG: HIER WUERDE "class Accuracy_Regression(GEnauigkeit)" kommen, aber ist für Regression!
+#SEITE 488:
+
+class Genauigkeit_Regression(Genauigkeit):
+
+    def __init__(self):
+        self.precision = None
+
+    def init(self, y, reinit=False):
+        if self.precision is None or reinit:
+            self.precision = np.std(y) / 250
+
+    def compare(self, vorhersagen, y):
+        return np.absolute(vorhersagen - y) < self.precision
 class Model:
 
     def __init__(self):
@@ -368,9 +437,10 @@ class Model:
     def add(self, layer):
         self.layers.append(layer)
 
-    def set(self, *, loss, optimizer): # Set loss and optimizer
+    def set(self, *, loss, optimizer, genauigkeit): # Set loss and optimizer
         self.loss = loss
         self.optimizer = optimizer
+        self.genauigkeit = genauigkeit
     
     def finalize(self):
         #Create and set the inputs layer:
@@ -378,6 +448,8 @@ class Model:
 
         #Count all the objects:
         layer_count = len(self.layers)
+
+        self.trainable_layers = [] #Initialize a list containing trainable layers:
 
         #Iterate the objects:
         for i in range(layer_count):
@@ -394,16 +466,42 @@ class Model:
             else:
                 self.layers[i].prev = self.layers[i-1]
                 self.layers[i].next = self.loss
+                self.output_layer_activation = self.layers[i]
+
+            #If layer contains an attribute called "gwicht", its a trainable layer - add to list
+            if hasattr(self.layers[i], 'gwicht'):
+                self.trainable_layers.append(self.layers[i])
+
+        self.loss.remember_trainable_layers(self.trainable_layers)
 
     def train(self, X, y, *, epochen=1, print_every=1): #Model trainieren
+        
+        self.genauigkeit.init(y) #Vlt von Regression auf Seite 488!!!
         #Main training loop:
         for epoch in range(1, epochen+1):
 
             output = self.forward(X)
 
-            #Temporär:
-            print(output)
-            exit()
+            data_loss, regularization_loss = self.loss.kalkulieren(output, y)
+            loss = data_loss + regularization_loss
+
+            vorhersagen = self.output_layer_activation.vorhersagen(output)
+            genauigkeit = self.genauigkeit.kalkulieren(vorhersagen, y)
+        
+        self.backward(output, y)
+
+        self.optimizer.pre_update_params()
+        for layer in self.trainable_layers:
+            self.optimizer.update_params(layer)
+        self.optimizer.post_update_params()
+
+        if not epochen % print_every:
+            print(f'epoche: {epochen},' +
+                  f'genau: {genauigkeit:.3f},' +
+                  f'loss: {loss:.3f}, (' +
+                  f'data_loss: {data_loss:.3f}, ' +
+                  f'reg_loss: {regularization_loss:.3f}), ' +
+                  f'lr: {self.optimizer.momentane_lern_rate}')
     
     def forward(self, X):
 
@@ -413,6 +511,13 @@ class Model:
             layer.forward(layer.prev.output)
 
         return layer.output
+
+    def backward(self, output, y):
+
+        self.loss.backward(output, y)
+
+        for layer in reversed(self.layers):
+            layer.backward(layer.next.dinputs)
 
 
 
@@ -430,7 +535,7 @@ model.add(Layer_Dense(64, 1))
 model.add(Aktivierung_Linear())
 
 #IM BUECH ISCH loss=Loss_MeanSquaredError()
-model.set(loss=Verlust(), optimizer=HerrAdam(lern_rate=0.005, decay=1e-3))
+model.set(loss=Loss_MeanSquaredError(), optimizer=HerrAdam(lern_rate=0.005, decay=1e-3), genauigkeit=Genauigkeit_Regression())
 
 model.finalize()
 
