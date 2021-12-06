@@ -3,11 +3,8 @@
 #PROBLEM: ES FEHLT IRGENDWO E FUNKTION MIT LOSS - Linear dine, Sigmoid nöd. Welli denn?
 
 import numpy as np
-import math
-import random
 import nnfs
 from nnfs.datasets import spiral_data
-from nnfs.datasets import vertical_data
 from nnfs.datasets import sine_data # Kapitel: Model 
 
 
@@ -28,11 +25,12 @@ class Layer_Dense:
         self.bias_regularizierer_l1 = bias_regularizierer_l1
         self.bias_regularizierer_l2 = bias_regularizierer_l2
     #Forward-Pass
-    def forward(self, inputs):
+    def forward(self, inputs, training):
         #Berechnung des Outputs
         self.output = np.dot(inputs, self.gwicht) + self.biases
 
-        self.inputs = inputs #Zwischenspeicherung für Zruggprop?
+        self.inputs = inputs
+
     def backward(self, dvalues): #Zruggpropagation (Kap 9 bis Siite 214)
         self.dgwicht = np.dot(self.inputs.T, dvalues)
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
@@ -65,21 +63,28 @@ class Layer_Dropout:
     def __init__(self, rate):
         self.rate = 1 - rate
 
-    def forward(self, inputs):
+    def forward(self, inputs, training):
+        
         self.inputs = inputs
+
+        if not training:
+            self.output = inputs.copy()
+            return
+
         self.binary_mask = np.random.binomial(1, self.rate, size=inputs.shape) / self.rate
         self.output = inputs * self.binary_mask
 
     def backward(self, dvalues):
         self.dinputs = dvalues * self.binary_mask
 
-class Aktivierung_ReLU: #???
+class Aktivierung_ReLU:
 
-    def forward(self, inputs):
+    def forward(self, inputs, training):
         self.inputs = inputs
         self.output = np.maximum(0, inputs)
 
     def backward(self, dvalues):
+        
         self.dinputs = dvalues.copy()
 
         self.dinputs[self.inputs <= 0] = 0
@@ -89,7 +94,8 @@ class Aktivierung_ReLU: #???
 
 class Aktivierung_Softmax:
     
-    def forward(self, inputs): #???
+    def forward(self, inputs, training):
+        self.inputs = inputs
         exp_werte = np.exp(inputs - np.max(inputs, axis=1, keepdims=True))
         wahrscheinlichkeiten = exp_werte / np.sum(exp_werte, axis=1, keepdims=True)
         self.output = wahrscheinlichkeiten
@@ -99,6 +105,7 @@ class Aktivierung_Softmax:
 
         #Enumerate outputs and gradients:
         for index, (single_output, single_dvalues) in enumerate(zip(self.output, dvalues)): #???
+            
             single_output = single_output.reshape(-1, 1) #Flatten out array
             jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
             #Calculate sample-wise gradient and add it to the array of sample gradients
@@ -109,7 +116,7 @@ class Aktivierung_Softmax:
 
 class Aktivierung_Linear:
 
-    def forward(self, inputs): #TRAINING
+    def forward(self, inputs, training): #TRAINING
         #Just remember values
         self.inputs = inputs
         self.output = inputs
@@ -123,7 +130,8 @@ class Aktivierung_Linear:
 
 class Aktivierung_Sigmoid:
 
-    def forward(self, inputs):
+    def forward(self, inputs, training):
+        
         self.inputs = inputs
         self.output = 1 / (1 + np.exp(-inputs))
 
@@ -238,7 +246,7 @@ class Loss_MeanSquaredError(Verlust):
         self.dinputs = -2 * (y_true - dvalues) / outputs
 
         self.dinputs = self.dinputs / samples
-
+#!!!!!!!!!!!!!!!!!!!!!!!!BIS HIERHIN KORRIGIERT BIS S. 516 IM BUCH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 class Optimizer_SGD: #Gute Start-Lernrate = 1.0, decay runter zu 0.1
     #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
     def __init__(self, lern_rate=1.0, decay=0., momentum = 0.):
@@ -400,7 +408,7 @@ class HerrAdam: #Gute Start-Lernrate = 0.001, decaying runter zu 0.00001
         self.iterationen += 1
 
 class Layer_Input:
-    def forward(self, inputs): #TRAINING
+    def forward(self, inputs, training): #TRAINING
 
         self.output = inputs
 
