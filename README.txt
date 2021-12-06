@@ -20,4 +20,4 @@ TECHNISCHI DETAILS:
 Python 3.9.7
 
 Packete:
-NumPy, Math, Random, NNFS
+NumPy, NNFS
