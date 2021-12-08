@@ -1,11 +1,11 @@
 #Alles, was im Buech staat, wird da vo mier umgsetzt (inkl nnfs Packet). Die Datei = NNFS Sandbox
 
-#PROBLEM: ES FEHLT IRGENDWO E FUNKTION MIT LOSS - Linear dine, Sigmoid nöd. Welli denn?
 
 import numpy as np
 import nnfs
-from nnfs.datasets import spiral_data
-from nnfs.datasets import sine_data # Kapitel: Model 
+from nnfs.datasets import spiral, spiral_data
+from nnfs.datasets import sine_data
+from numpy.random.mtrand import sample # Kapitel: Model 
 
 
 
@@ -175,17 +175,21 @@ class Verlust:
     def remember_trainable_layers(self, trainable_layers):
         self.trainable_layers = trainable_layers
 
-    def kalkulieren(self, output, y):  #Wieso funktioniert forward ohni def (wA: Z.66+)
+    def kalkulieren(self, output, y, *, include_reg=False):  #Wieso funktioniert forward ohni def (wA: Z.66+)
         #Calculate sample losses:
         sample_verluste = self.forward(output, y)
         #Calculate mean loss:
         data_verlust = np.mean(sample_verluste)
+
+        if not include_reg:
+            return data_verlust
         #Return the data and reg loss:
         return data_verlust, self.regularization_loss()
 
 class Verlust_CatCrossEnt(Verlust):
 
     def forward(self, y_pred, y_true): #??? Was genau y_pred & y_true???
+        
         samples = len(y_pred)
         y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)#??? Was isch das???
 
@@ -212,14 +216,14 @@ class Verlust_CatCrossEnt(Verlust):
 #Softmax-Klassifizierer - kombiniert SoftmaxAktivierung und CrossEntLoss für schnelleres backward
 class Aktivierung_Softmax_Verlust_CatCrossEnt():
 
-    def __init__(self): #Kreierung von Aktivierung und Loss Funktionen Objekte
-        self.aktivierung = Aktivierung_Softmax()
-        self.verlust = Verlust_CatCrossEnt()
+    #def __init__(self): #Kreierung von Aktivierung und Loss Funktionen Objekte
+     #   self.aktivierung = Aktivierung_Softmax()
+      #  self.verlust = Verlust_CatCrossEnt()
 
-    def forward(self, inputs, y_true): #??? y_true???
-        self.aktivierung.forward(inputs) #Output Layer Aktivierungsfunktion
-        self.output = self.aktivierung.output #Set the ouput
-        return self.verlust.kalkulieren(self.output, y_true) #Lossvalue berechnen und geben
+    #def forward(self, inputs, y_true): #??? y_true???
+     #   self.aktivierung.forward(inputs) #Output Layer Aktivierungsfunktion
+      #  self.output = self.aktivierung.output #Set the ouput
+       # return self.verlust.kalkulieren(self.output, y_true) #Lossvalue berechnen und geben
 
     def backward(self, dvalues, y_true):
         samples = len(dvalues) #Anzahl samples
@@ -229,6 +233,26 @@ class Aktivierung_Softmax_Verlust_CatCrossEnt():
         self.dinputs = dvalues.copy() #Kopieren für sichere Modifizierung
         self.dinputs[range(samples), y_true] -= 1 #Gradient berechnen
         self.dinputs = self.dinputs / samples #Gradienten normalisieren
+
+class Verlust_BinCrossent(Verlust):
+
+    def forward(self, y_pred, y_true):
+
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        sample_verluste = -(y_true * np.log(y_pred_clipped) + (1-y_true)* np.log(1-y_pred_clipped))
+        sample_verluste = np.mean(sample_verluste, axis=1)
+
+        return sample_verluste
+
+    def backward(self, dvalues, y_true):
+        samples = len(dvalues)
+        outputs = len(dvalues[0])
+
+        clipped_dvalues = np.clip(dvalues, 1e-7, 1 - 1e-7)
+
+        self.dinputs = -(y_true / clipped_dvalues - (1-y_true) / (1 - clipped_dvalues)) / outputs
+        self.dinputs = self.dinputs / samples
 
 class Loss_MeanSquaredError(Verlust):
 
@@ -246,7 +270,20 @@ class Loss_MeanSquaredError(Verlust):
         self.dinputs = -2 * (y_true - dvalues) / outputs
 
         self.dinputs = self.dinputs / samples
-#!!!!!!!!!!!!!!!!!!!!!!!!BIS HIERHIN KORRIGIERT BIS S. 516 IM BUCH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+class Verlust_MeanAbsoluteError(Verlust):
+
+    def forward(self, y_pred, y_true):
+        sample_verluste = np.mean(np.abs(y_true - y_pred), axis=1)
+        return sample_verluste
+
+    def backward(self, dvalues, y_true):
+        samples = len(dvalues)
+        outputs = len(dvalues[0])
+
+        self.dinputs = np.sign(y_true - dvalues) / outputs
+        self.dinputs = self.dinputs / samples
+
 class Optimizer_SGD: #Gute Start-Lernrate = 1.0, decay runter zu 0.1
     #Initalisierung Optimizer. Lernrate = 1 - Basis für diesen Optimizer
     def __init__(self, lern_rate=1.0, decay=0., momentum = 0.):
@@ -315,6 +352,7 @@ class Optimizer_AdaGrad:
         if not hasattr(layer, 'gwicht_cache'):
             layer.gwicht_cache = np.zeros_like(layer.gwicht)
             layer.bias_cache = np.zeros_like(layer.biases)
+        
         layer.gwicht_cache += layer.dgwicht ** 2
         layer.bias_cache += layer.dbiases ** 2
 
@@ -416,15 +454,24 @@ class Genauigkeit:
 
     def kalkulieren(self, vorhersagen, y):
 
-        vergleiche = self.compare(vorhersagen, y)
+        vergleiche = self.vergleichen(vorhersagen, y)
 
         genauigkeit = np.mean(vergleiche)
 
         return genauigkeit
 
-#WICHTIG: HIER WUERDE "class Accuracy_Regression(GEnauigkeit)" kommen, aber ist für Regression!
-#SEITE 488:
+class Genauigkeit_Categorial(Genauigkeit):
 
+    def __init__(self, *, binary=False):
+        self.binary = binary
+
+    def init(self, y):
+        pass
+
+    def vergleichen(self, vorhersagen, y):
+        if not self.binary and len(y.shape) == 2:
+            y = np.argmax(y, axis=1)
+            return vorhersagen == y
 class Genauigkeit_Regression(Genauigkeit):
 
     def __init__(self):
@@ -434,13 +481,14 @@ class Genauigkeit_Regression(Genauigkeit):
         if self.precision is None or reinit:
             self.precision = np.std(y) / 250
 
-    def compare(self, vorhersagen, y):
+    def vergleichen(self, vorhersagen, y):
         return np.absolute(vorhersagen - y) < self.precision
 class Model:
 
     def __init__(self):
         #Create a list of network objects
         self.layers = []
+        self.softmax_classifier_output = None
     #Add objects to the model:
     def add(self, layer):
         self.layers.append(layer)
@@ -482,158 +530,94 @@ class Model:
 
         self.loss.remember_trainable_layers(self.trainable_layers)
 
-    def train(self, X, y, *, epochen=1, print_every=1): #Model trainieren
+
+        if isinstance(self.layers[-1], Aktivierung_Softmax) and isinstance(self.loss, Verlust_CatCrossEnt):
+            self.softmax_classifier_output = Aktivierung_Softmax_Verlust_CatCrossEnt()
+
+    def train(self, X, y, *, epochen=1, print_every=1, validation_data=None): #Model trainieren
         
         self.genauigkeit.init(y) #Vlt von Regression auf Seite 488!!!
         #Main training loop:
         for epoch in range(1, epochen+1):
 
-            output = self.forward(X)
+            output = self.forward(X, training=True)
 
-            data_loss, regularization_loss = self.loss.kalkulieren(output, y)
+            data_loss, regularization_loss = self.loss.kalkulieren(output, y, include_reg=True)
             loss = data_loss + regularization_loss
 
             vorhersagen = self.output_layer_activation.vorhersagen(output)
             genauigkeit = self.genauigkeit.kalkulieren(vorhersagen, y)
         
-        self.backward(output, y)
+            self.backward(output, y)
 
-        self.optimizer.pre_update_params()
-        for layer in self.trainable_layers:
-            self.optimizer.update_params(layer)
-        self.optimizer.post_update_params()
+            self.optimizer.pre_update_params()
+            for layer in self.trainable_layers:
+                self.optimizer.update_params(layer)
+            self.optimizer.post_update_params()
 
-        if not epochen % print_every:
-            print(f'epoche: {epochen},' +
-                  f'genau: {genauigkeit:.3f},' +
-                  f'loss: {loss:.3f}, (' +
-                  f'data_loss: {data_loss:.3f}, ' +
-                  f'reg_loss: {regularization_loss:.3f}), ' +
-                  f'lr: {self.optimizer.momentane_lern_rate}')
+            if not epochen % print_every:
+                print(f'epoche: {epoche},' +
+                      f'genau: {genauigkeit:.3f},' +
+                    f'loss: {loss:.3f}, (' +
+                    f'data_loss: {data_loss:.3f}, ' +
+                    f'reg_loss: {regularization_loss:.3f}), ' +
+                    f'lr: {self.optimizer.momentane_lern_rate}')
     
-    def forward(self, X):
+        if validation_data is not None:
+            X_val, y_val = validation_data
+            output = self.forward(X_val, training=False)
+            loss = self.loss.kalkulieren(output, y_val)
+            vorhersagen = self.output_layer_activation.vorhersagen(output)
+            genauigkeit = self.genauigkeit.kalkulieren(vorhersagen, y_val)
 
-        self.input_layer.forward(X)
+            print(f'validation, ' + 
+                f'genau: {genauigkeit:.3f}, '+
+                f'loss: {loss:.3f}')
+
+    def forward(self, X, training):
+
+        self.input_layer.forward(X, training)
 
         for layer in self.layers:
-            layer.forward(layer.prev.output)
+            layer.forward(layer.prev.output, training)
 
         return layer.output
 
     def backward(self, output, y):
 
-        self.loss.backward(output, y)
+        if self.softmax_classifier_output is not None:
+            self.softmax_classifier_output.backward(output, y)
 
-        for layer in reversed(self.layers):
-            layer.backward(layer.next.dinputs)
+            self.layers[-1].dinputs = self.softmax_classifier_output.dinputs
+
+            for layer in reversed(self.layers[:-1]):
+                layer.backward(layer.next.dinputs)
+            return
+
+            self.loss.backward(output, y)
+            for layer in reversed(self.layers):
+                layer.backward(layer.next.dinputs)
 
 
 
-X, y = sine_data() #Richtiger Ort?
+X, y = spiral_data(samples=1000, classes=3)
+X_test, y_test = spiral_data(samples=100, classes=3)
 
 #Model initalisieren:
 model = Model()
 
 #Add layers:
-model.add(Layer_Dense(1, 64))
+model.add(Layer_Dense(2, 512, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4))
 model.add(Aktivierung_ReLU())
-model.add(Layer_Dense(64, 64))
-model.add(Aktivierung_ReLU())
-model.add(Layer_Dense(64, 1))
-model.add(Aktivierung_Linear())
+model.add(Layer_Dropout(0.1))
+model.add(Layer_Dense(512, 3))
+model.add(Aktivierung_Softmax())
 
 #IM BUECH ISCH loss=Loss_MeanSquaredError()
-model.set(loss=Loss_MeanSquaredError(), optimizer=HerrAdam(lern_rate=0.005, decay=1e-3), genauigkeit=Genauigkeit_Regression())
+model.set(
+    loss=Verlust_CatCrossEnt(), optimizer=HerrAdam(lern_rate=0.05, decay=5e-5), 
+    genauigkeit=Genauigkeit_Categorial())
 
 model.finalize()
 
-model.train(X, y, epochen=10000, print_every=100)
-
-#Erstellen eines Datensets
-X, y = spiral_data(samples=1000, classes=3)
-
-#Kreation eines Layers mit 2 Inputs und 64 Outputs
-dense1 = Layer_Dense(2, 64, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4)
-
-aktivierung1 = Aktivierung_ReLU()
-
-dropout1 = Layer_Dropout(0.1)
-
-dense2 = Layer_Dense(64, 3)
-
-loss_aktivierung = Aktivierung_Softmax_Verlust_CatCrossEnt()
-
-optimizer = HerrAdam(lern_rate=0.02, decay=5e-7)
-
-
-for epoche in range(10001):
-    #Forward-Pass der Daten durch Layer
-    dense1.forward(X)
-
-    aktivierung1.forward(dense1.output)
-
-    dropout1.forward(aktivierung1.output)
-
-    dense2.forward(aktivierung1.output)
-
-    data_loss = loss_aktivierung.forward(dense2.output, y)
-
-    regularization_loss = \
-        loss_aktivierung.verlust.regularization_loss(dense1) + \
-        loss_aktivierung.verlust.regularization_loss(dense2)
-
-    loss = data_loss + regularization_loss
-
-
-    vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
-    if len(y.shape) == 2: #??? .shape und ==2???
-        y = np.argmax(y, axis=1)
-    genauigkeit = np.mean(vorhersagen==y) #??? Wieso mean vo == ???
-    
-    if not epoche % 100:
-        print(f'Epoche: {epoche}, ' +
-        f'Genau: {genauigkeit:.3f}, ' +
-        f'Loss: {loss:.3f}, ' +
-        f'data_loss: {data_loss:.3f}, ' +
-        f'reg_loss: {regularization_loss:.3f}, ' +
-        f'LR: {optimizer.momentane_lern_rate}')
-
-    #Zruggpass:
-    loss_aktivierung.backward(loss_aktivierung.output, y)
-    dense2.backward(loss_aktivierung.dinputs)
-    dropout1.backward(dense2.inputs)
-    aktivierung1.backward(dense2.dinputs)
-    dense1.backward(aktivierung1.dinputs)
-
-    optimizer.pre_update_params()
-    optimizer.update_params(dense1)
-    optimizer.update_params(dense2)
-    optimizer.post_update_params()
-
-    #Gradienten:
-    #print(dense1.dgwicht)
-    #print(dense1.dbiases)
-    #print(dense2.dgwicht)
-    #print(dense2.dbiases)
-
-
-#Erstellung eines Test-Datensets:
-X_test, y_test = spiral_data(samples=100, classes=3)
-
-dense1.forward(X_test)
-
-aktivierung1.forward(dense1.output)
-
-dense2.forward(aktivierung1.output)
-
-
-loss = loss_aktivierung.forward(dense2.output, y)
-
-
-
-vorhersagen = np.argmax(loss_aktivierung.output, axis=1) #???
-   
-if len(y_test.shape) == 2: #??? .shape und ==2???
-    y_test = np.argmax(y_test, axis=1)
-genauigkeit = np.mean(vorhersagen==y_test)
-print(f'validierung, genau: {genauigkeit:.3f}, loss: {loss:.3f}')
+model.train(X, y, validation_data=(X_test, y_test), epochen=10000, print_every=100)
