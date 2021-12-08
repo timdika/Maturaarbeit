@@ -4,8 +4,6 @@
 import numpy as np
 import nnfs
 from nnfs.datasets import spiral, spiral_data
-from nnfs.datasets import sine_data
-from numpy.random.mtrand import sample # Kapitel: Model 
 
 
 
@@ -27,9 +25,8 @@ class Layer_Dense:
     #Forward-Pass
     def forward(self, inputs, training):
         #Berechnung des Outputs
-        self.output = np.dot(inputs, self.gwicht) + self.biases
-
         self.inputs = inputs
+        self.output = np.dot(inputs, self.gwicht) + self.biases
 
     def backward(self, dvalues): #Zruggpropagation (Kap 9 bis Siite 214)
         self.dgwicht = np.dot(self.inputs.T, dvalues)
@@ -592,11 +589,13 @@ class Model:
 
             for layer in reversed(self.layers[:-1]):
                 layer.backward(layer.next.dinputs)
+            
             return
 
-            self.loss.backward(output, y)
-            for layer in reversed(self.layers):
-                layer.backward(layer.next.dinputs)
+        self.loss.backward(output, y)
+
+        for layer in reversed(self.layers):
+            layer.backward(layer.next.dinputs)
 
 
 
