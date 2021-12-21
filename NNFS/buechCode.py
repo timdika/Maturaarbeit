@@ -4,6 +4,7 @@
 import numpy as np
 import nnfs
 from nnfs.datasets import spiral, spiral_data
+import matplotlib as plt
 
 
 

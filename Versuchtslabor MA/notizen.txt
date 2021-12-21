@@ -1,3 +1,1 @@
 Python 3.9 als Interpreter für alles setzen und Biblios wieder herunterladen
-
-Danach Tensorflow herunterladen
