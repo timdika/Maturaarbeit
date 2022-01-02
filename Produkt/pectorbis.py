@@ -39,3 +39,17 @@ X_test = (X_test.astype(np.float32) - 127.5) / 127.5
 X = X.reshape(X.shape[0], -1)
 X_test = X_test.reshape(X_test.shape[0], -1)
 
+keys = np.array(range(X.shape[0]))
+print(keys)
+np.random.shuffle(keys)
+print(keys)
+
+X = X[keys]
+y = y[keys]
+
+BATCH_SIZE = 2
+
+schritte = X.shape[0] // BATCH_SIZE
+
+if schritte * BATCH_SIZE < X.shape[0]:
+    schritte += 1

@@ -5,6 +5,8 @@ import numpy as np
 import nnfs
 from nnfs.datasets import spiral, spiral_data
 import matplotlib as plt
+import os
+import cv2
 
 
 
@@ -179,10 +181,27 @@ class Verlust:
         #Calculate mean loss:
         data_verlust = np.mean(sample_verluste)
 
+        self.accumulated_sum += np.sum(sample_verluste)
+        self.accumulated_count += len(sample_verluste)
+
         if not include_reg:
             return data_verlust
         #Return the data and reg loss:
         return data_verlust, self.regularization_loss()
+
+    def accumulated_kalkulieren(self, *, include_reg=False):
+
+        data_verlust = self.accumulated_sum / self.accumulated_count
+
+        if not include_reg:
+            return data_verlust
+
+        return data_verlust, self.regularization_loss()
+
+    def neu_pass(self):
+        self.accumulated_sum = 0
+        self.accumulated_count = 0
+
 
 class Verlust_CatCrossEnt(Verlust):
 
@@ -456,7 +475,20 @@ class Genauigkeit:
 
         genauigkeit = np.mean(vergleiche)
 
+        self.accumulated_sum += np.sum(vergleiche)
+        self.accumulated_count += len(vergleiche)
+
         return genauigkeit
+
+    def accumulated_kalkulieren(self):
+
+        genauigkeit = self.accumulated_sum / self.accumulated_count
+
+        return genauigkeit
+
+    def neu_pass(self):
+        self.accumulated_sum = 0
+        self.accumulated_count = 0
 
 class Genauigkeit_Categorial(Genauigkeit):
 
@@ -532,45 +564,108 @@ class Model:
         if isinstance(self.layers[-1], Aktivierung_Softmax) and isinstance(self.loss, Verlust_CatCrossEnt):
             self.softmax_classifier_output = Aktivierung_Softmax_Verlust_CatCrossEnt()
 
-    def train(self, X, y, *, epochen=1, print_every=1, validation_data=None): #Model trainieren
+    def train(self, X, y, *, epochen=1, batch_size=None, print_every=1, validation_data=None): #Model trainieren
         
         self.genauigkeit.init(y) #Vlt von Regression auf Seite 488!!!
+
+        train_schritte = 1
+
+        if validation_data is not None:
+            validierungs_schritte = 1
+
+            X_val, y_val = validation_data
+
+        if batch_size is not None:
+            train_schritte = len(X) // batch_size
+
+            if train_schritte * batch_size < len(X):
+                train_schritte += 1
+
+            if validation_data is not None:
+                validierungs_schritte = len(X_val) // batch_size
+
+                if validierungs_schritte * batch_size < len(X_val):
+                    validierungs_schritte += 1
+
         #Main training loop:
         for epoch in range(1, epochen+1):
 
-            output = self.forward(X, training=True)
+            print(f'epoche: {epoch}')
 
-            data_loss, regularization_loss = self.loss.kalkulieren(output, y, include_reg=True)
+            self.loss.neu_pass()
+            self.genauigkeit.neu_pass()
+
+            for schritt in range(train_schritte):
+                if batch_size is None:
+                    batch_X = X
+                    batch_y = y
+                else:
+                    batch_X = X[schritt*batch_size:(schritt+1)*batch_size]
+                    batch_y = y[schritt*batch_size:(schritt+1)*batch_size]
+
+            output = self.forward(batch_X, training=True)
+
+            data_loss, regularization_loss = self.loss.kalkulieren(output, batch_y, include_reg=True)
             loss = data_loss + regularization_loss
 
             vorhersagen = self.output_layer_activation.vorhersagen(output)
-            genauigkeit = self.genauigkeit.kalkulieren(vorhersagen, y)
+            genauigkeit = self.genauigkeit.kalkulieren(vorhersagen, batch_y)
         
-            self.backward(output, y)
+            self.backward(output, batch_y)
 
             self.optimizer.pre_update_params()
             for layer in self.trainable_layers:
                 self.optimizer.update_params(layer)
             self.optimizer.post_update_params()
 
-            if not epochen % print_every:
-                print(f'epoche: {epoche},' +
+            if not schritt % print_every or schritt == train_schritte - 1:
+                print(f'schritt: {schritt},' +
                       f'genau: {genauigkeit:.3f},' +
                     f'loss: {loss:.3f}, (' +
                     f'data_loss: {data_loss:.3f}, ' +
                     f'reg_loss: {regularization_loss:.3f}), ' +
                     f'lr: {self.optimizer.momentane_lern_rate}')
+
+        epoch_data_loss, epoch_regularization_loss = self.loss.accumulated_kalkulieren(include_reg=True)
+        epoch_loss = epoch_data_loss + epoch_regularization_loss
+        epoch_genauigkeit = self.genauigkeit.accumulated_kalkulieren()
+        print(f'training, ' +
+                f'genau: {epoch_genauigkeit:.3f}, '+
+                f'loss: {epoch_loss:.3f}, (' +
+                f'data_loss: {epoch_data_loss:.3f}, ' +
+                f'reg_loss: {epoch_regularization_loss:.3f}) '+
+                f'lr: {self.optimizer.momentane_lern_rate}')
     
         if validation_data is not None:
-            X_val, y_val = validation_data
-            output = self.forward(X_val, training=False)
-            loss = self.loss.kalkulieren(output, y_val)
-            vorhersagen = self.output_layer_activation.vorhersagen(output)
-            genauigkeit = self.genauigkeit.kalkulieren(vorhersagen, y_val)
+
+            self.loss.neu_pass()
+            self.genauigkeit.neu_pass()
+
+            for schritt in range(validierungs_schritte):
+
+                if batch_size is None:
+                    batch_X = X_val
+                    batch_y = y_val
+
+                else:
+                    batch_X = X_val[schritt*batch_size:(schritt+1)*batch_size]
+                    batch_y = y_val[schritt*batch_size:(schritt+1)*batch_size]
+
+            
+                output = self.forward(batch_X, training=False)
+            
+                self.loss.kalkulieren(output, batch_y)
+
+                vorhersagen = self.output_layer_activation.vorhersagen(output)
+
+                self.genauigkeit.kalkulieren(vorhersagen, batch_y)
+
+            validation_loss = self.loss.accumulated_kalkulieren()
+            validation_genauigkeit = self.genauigkeit.accumulated_kalkulieren()
 
             print(f'validation, ' + 
-                f'genau: {genauigkeit:.3f}, '+
-                f'loss: {loss:.3f}')
+                f'genau: {validation_genauigkeit:.3f}, '+
+                f'loss: {validation_loss:.3f}')
 
     def forward(self, X, training):
 
@@ -598,26 +693,58 @@ class Model:
         for layer in reversed(self.layers):
             layer.backward(layer.next.dinputs)
 
+def Datensatz_laden(datensatz, path):
+
+    labels = os.listdir(os.path.join(path, datensatz))
+
+    X = []
+    y = []
+
+    for label in labels:
+        for file in os.listdir(os.path.join(path, datensatz, label)):
+            image = cv2.imread(os.path.join(path, datensatz, label, file), cv2.IMREAD_UNCHANGED)
+
+            X.append(image)
+            y.append(label)
+
+    return np.array(X), np.array(y).astype('uint8')
 
 
-X, y = spiral_data(samples=1000, classes=3)
-X_test, y_test = spiral_data(samples=100, classes=3)
+def create_data_med(path):
+
+    X, y = Datensatz_laden('train', path)
+    X_test, y_test = Datensatz_laden('test', path)
+
+    return X, y, X_test, y_test
+
+
+
+X, y, X_test, y_test = create_data_med('C:/Users/timof/Desktop/Dokumente_und_Datensatz_MA/ZweiFallDatensatz')
+
+keys = np.array(range(X.shape[0]))
+np.random.shuffle(keys)
+X = X[keys]
+y = y[keys]
+
+X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
+X_test = (X_test.reshape(X_test.shape[0], -1).astype(np.float32) - 127.5) / 127.5
 
 #Model initalisieren:
 model = Model()
 
 #Add layers:
-model.add(Layer_Dense(2, 512, gwicht_regularizierer_l2=5e-4, bias_regularizierer_l2=5e-4))
+model.add(Layer_Dense(X.shape[1], 64))
 model.add(Aktivierung_ReLU())
-model.add(Layer_Dropout(0.1))
-model.add(Layer_Dense(512, 3))
+model.add(Layer_Dense(64, 64))
+model.add(Aktivierung_ReLU())
+model.add(Layer_Dense(64, 10))
 model.add(Aktivierung_Softmax())
 
 #IM BUECH ISCH loss=Loss_MeanSquaredError()
 model.set(
-    loss=Verlust_CatCrossEnt(), optimizer=HerrAdam(lern_rate=0.05, decay=5e-5), 
+    loss=Verlust_CatCrossEnt(), optimizer=HerrAdam(decay=5e-5), #lernrate vor decay 
     genauigkeit=Genauigkeit_Categorial())
 
 model.finalize()
 
-model.train(X, y, validation_data=(X_test, y_test), epochen=10000, print_every=100)
+model.train(X, y, validation_data=(X_test, y_test), epochen=5, batch_size=1, print_every=100)
